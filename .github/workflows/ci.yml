@@ -18,7 +18,7 @@ concurrency:
 jobs:
   frontend:
     name: Frontend checks
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, linux, nucchuck]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -33,13 +33,17 @@ jobs:
 
   rust:
     name: Rust checks
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, linux, nucchuck]
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Install Tauri Linux dependencies
         run: |
+          if pkg-config --exists webkit2gtk-4.1; then
+            echo "Tauri Linux dependencies already present."
+            exit 0
+          fi
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
@@ -68,7 +72,7 @@ jobs:
 
   android-native:
     name: Android native overlay
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, linux, nucchuck]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -117,8 +121,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - os: linux
+            runner: '["self-hosted","linux","nucchuck"]'
+          - os: macos-latest
+            runner: '["macos-latest"]'
+          - os: windows-latest
+            runner: '["windows-latest"]'
+    runs-on: ${{ fromJSON(matrix.runner) }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -126,6 +136,10 @@ jobs:
       - name: Install Tauri Linux dependencies
         if: runner.os == 'Linux'
         run: |
+          if pkg-config --exists webkit2gtk-4.1; then
+            echo "Tauri Linux dependencies already present."
+            exit 0
+          fi
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
